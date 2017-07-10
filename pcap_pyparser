@@ -24,20 +24,24 @@ def parser():
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print('Usage:  [input_filename]')
+        # If parser run without any parameters:
+        print('Usage: {0} <param> [input_filename]').format(sys.argv[0])
         print
         print('Try -h or --help for more help.')
         sys.exit()
 
     elif len(sys.argv) <= 2:
+        # If parser run with one parameter
         if sys.argv[1] == '-h' or sys.argv[1] == '--help':
-            print('Usage: password_checker [input filename]')
-            print()
-            print('[input filenamge] -- enter dir and filename')
+            # If this parameter is '-h' of '--help' for help
+            print('Usage: {0} <param> [input_filename]').format(sys.argv[0])
+            print
+            print('[input filename] -- enter dir and filename')
             print('')
         else:
-            print('Usage: password_checker [input_filename]')
-            print()
+            # If this parameter ISN'T '-h' of '--help' for help
+            print('Usage: {0} <param> [input_filename]').format(sys.argv[0])
+            print
             print('Try -h or --help for more help.')
 
     else:
