@@ -1,0 +1,44 @@
+#!/usr/bin/python
+
+import dpkt
+import sys
+
+
+def parser():
+    f = open('test_file.pcap')
+    pcap = dpkt.pcap.Reader(f)
+
+#for ts, buf in pcap:
+    #print(ts, len(buf))
+
+    for ts, buf in pcap:
+        try:
+            eth = dpkt.ethernet.Ethernet(buf)
+            ip = eth.data
+            tcp = ip.data
+            print(tcp.dport)
+        except AttributeError:
+            print('Error!')
+            continue
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        print('Usage:  [input_filename]')
+        print
+        print('Try -h or --help for more help.')
+        sys.exit()
+
+    elif len(sys.argv) <= 2:
+        if sys.argv[1] == '-h' or sys.argv[1] == '--help':
+            print('Usage: password_checker [input filename]')
+            print()
+            print('[input filenamge] -- enter dir and filename')
+            print('')
+        else:
+            print('Usage: password_checker [input_filename]')
+            print()
+            print('Try -h or --help for more help.')
+
+    else:
+        print(sys.argv[1])
