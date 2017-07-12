@@ -1,48 +1,122 @@
 #!/usr/bin/python
 
-import dpkt
 import sys
+import dpkt
+import socket
+import argparse
 
 
-def parser():
-    f = open('test_file.pcap')
-    pcap = dpkt.pcap.Reader(f)
+version = '0.0.2'
 
-#for ts, buf in pcap:
-    #print(ts, len(buf))
+# Description of this parameter
+def arg_parser():
+    parser = argparse.ArgumentParser(
+        description='''This is a python pcap parser. Only pcap''',
+        epilog='''(c) PASIT 2017 by Vitaly and Igor'''
+    )
+    # Parameter for input file
+    parser.add_argument('-i', '--input_file', type=str,
+                        # Description of this parameter
+                        help='Input pcap file for parsing',
+                        # Name of this parameter
+                        metavar='<input file>')
+    # Parameter for output file
+    parser.add_argument('-o', '--output_file', type=str,
+                        # Description of this parameter
+                        help='Output file',
+                        # Name of this parameter
+                        metavar='<output_file>')
+    # Parameter for filter
+    parser.add_argument('-f', '--filter', type=str,
+                        # Description of this parameter
+                        help='Filter',
+                        # Name of this parameter
+                        metavar='<filter>')
+    # Parameter for version
+    parser.add_argument('-v', '--version', action='version',
+                        help='number of version',
+                        version='{0}'.format(version))
 
+
+    return parser
+
+
+def pcap_parser(input_file, output_file, filter):
+    # Open input file
+    file = open(input_file)
+    # Use dpkt parser for read pcap file
+    pcap = dpkt.pcap.Reader(file)
+
+
+    number_of_packet = 0
     for ts, buf in pcap:
         try:
+            # Parse ethernet level
             eth = dpkt.ethernet.Ethernet(buf)
             ip = eth.data
-            tcp = ip.data
-            print(tcp.dport)
+
+            # TCP or UDP, vot v chem vopros!
+            if ip.p == dpkt.ip.IP_PROTO_UDP:
+                type = 'udp'
+            elif ip.p == dpkt.ip.IP_PROTO_TCP:
+                type = 'tcp'
+
+            # Get destination and source ip address
+            if len(ip.dst) == 4:
+                # If destination ip ver. 4
+                dst_ip = socket.inet_ntoa(ip.dst)
+            else:
+                # If destination ip ver. 6
+                dst_ip = socket.inet_ntop(socket.AF_INET6, ip.dst)
+
+            if len(ip.src) == 4:
+                # If source ip ver. 4
+                src_ip = socket.inet_ntoa(ip.src)
+            else:
+                # If source ip ver. 6
+                src_ip = socket.inet_ntop(socket.AF_INET6, ip.src)
+
+            # Get destination and source port
+            dst_port = ip.data.dport
+            src_port = ip.data.sport
+
+
+            data = ip.data.data
+
+            packet = {'index': number_of_packet, 'source': {'src_mac': '', 'src_ip': src_ip, 'src_port': str(src_port)}, 'destination': {'dst_mac': '', 'dst_ip': dst_ip, 'dst_port': str(dst_port)}, 'type': type, 'data': data}
+            #print(packet['data'])
+            print(sessions_parser(packet))
+            number_of_packet = number_of_packet + 1
         except AttributeError:
             print('Error!')
+            number_of_packet = number_of_packet + 1
             continue
 
 
+def sessions_parser(packet):
+    sessions = {}
+    packet_cout = packet['index']
+    for i in range(packet_cout):
+        out_str = ''
+        network_path = packet['source']['src_ip'] +'.'+packet['source']['src_port']+'-'+packet['destination']['dst_ip']+'.'+packet['destination']['dst_port']
+        if (network_path in sessions.keys()) == False:
+            sessions[network_path] = []
+            try:
+                data_str = packet['data']
+            except AttributeError:
+                continue
+                #for j in range(0,len(data_str),2):
+                #		out_str = out_str + chr(int(data_str[j:j+2],16))
+            sessions[network_path].append(data_str)
+    print("Extract complite")
+    return sessions
+
+
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        # If parser run without any parameters:
-        print('Usage: {0} <param> [input_filename]').format(sys.argv[0])
-        print
-        print('Try -h or --help for more help.')
-        sys.exit()
-
-    elif len(sys.argv) <= 2:
-        # If parser run with one parameter
-        if sys.argv[1] == '-h' or sys.argv[1] == '--help':
-            # If this parameter is '-h' of '--help' for help
-            print('Usage: {0} <param> [input_filename]').format(sys.argv[0])
-            print
-            print('[input filename] -- enter dir and filename')
-            print('')
-        else:
-            # If this parameter ISN'T '-h' of '--help' for help
-            print('Usage: {0} <param> [input_filename]').format(sys.argv[0])
-            print
-            print('Try -h or --help for more help.')
-
+    parser = arg_parser()
+    namespace = parser.parse_args(sys.argv[1:])
+    print(namespace)
+    if not namespace.input_file:
+        print('Select input file!')
     else:
-        print(sys.argv[1])
+        pcap_parser(namespace.input_file, namespace.output_file, namespace.filter)
