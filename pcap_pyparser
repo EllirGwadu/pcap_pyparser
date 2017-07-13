@@ -6,7 +6,7 @@ import socket
 import argparse
 
 
-version = '0.0.2'
+version = '0.0.3'
 
 # Description of this parameter
 def arg_parser():
@@ -55,11 +55,9 @@ def pcap_parser(input_file, output_file, filter):
             eth = dpkt.ethernet.Ethernet(buf)
             ip = eth.data
 
-            # TCP or UDP, vot v chem vopros!
-            if ip.p == dpkt.ip.IP_PROTO_UDP:
-                type = 'udp'
-            elif ip.p == dpkt.ip.IP_PROTO_TCP:
-                type = 'tcp'
+            # Get destination and source mac address
+            src_mac = get_mac(eth.src)
+            dst_mac = get_mac(eth.dst)
 
             # Get destination and source ip address
             if len(ip.dst) == 4:
@@ -76,21 +74,42 @@ def pcap_parser(input_file, output_file, filter):
                 # If source ip ver. 6
                 src_ip = socket.inet_ntop(socket.AF_INET6, ip.src)
 
+            # TCP or UDP, vot v chem vopros!
+            if ip.p == dpkt.ip.IP_PROTO_UDP:
+                type_packet = 'udp'
+            elif ip.p == dpkt.ip.IP_PROTO_TCP:
+                type_packet = 'tcp'
+
             # Get destination and source port
             dst_port = ip.data.dport
             src_port = ip.data.sport
 
-
+            # Get data from payload of packet
             data = ip.data.data
 
-            packet = {'index': number_of_packet, 'source': {'src_mac': '', 'src_ip': src_ip, 'src_port': str(src_port)}, 'destination': {'dst_mac': '', 'dst_ip': dst_ip, 'dst_port': str(dst_port)}, 'type': type, 'data': data}
-            #print(packet['data'])
-            print(sessions_parser(packet))
+            packet = {'index': number_of_packet, 'source': {'src_mac': src_mac, 'src_ip': src_ip, 'src_port': src_port},
+                      'destination': {'dst_mac': dst_mac, 'dst_ip': dst_ip, 'dst_port': dst_port}, 'type': type_packet,
+                      'data': ''}#data}
+            print(packet)
+            #print(sessions_parser(packet))
+
             number_of_packet = number_of_packet + 1
         except AttributeError:
             print('Error!')
             number_of_packet = number_of_packet + 1
             continue
+
+
+def get_mac(raw_mac):
+    # raw_mac - .src or .dst methods of Ethernet layer
+    mac = ''
+    for i in range(6):
+        tmp = hex((ord(raw_mac[i])))
+        if len(tmp[2:]) < 2:
+            mac = mac + '0' + tmp[2:] + ":"
+        else:
+            mac = mac + tmp[2:] + ":"
+    return mac[:-1]
 
 
 def sessions_parser(packet):
@@ -120,3 +139,4 @@ if __name__ == "__main__":
         print('Select input file!')
     else:
         pcap_parser(namespace.input_file, namespace.output_file, namespace.filter)
+ 
