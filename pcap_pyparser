@@ -12,8 +12,8 @@ version = '0.0.3'
 def arg_parser():
     parser = argparse.ArgumentParser(
         description='''This is a python pcap parser. Only pcap''',
-        epilog='''(c) PASIT 2017 by Vitaly and Igor'''
-    )
+        epilog='''(c) PASIT 2017 by Vitaly and Igor''')
+
     # Parameter for input file
     parser.add_argument('-i', '--input_file', type=str,
                         # Description of this parameter
@@ -37,20 +37,65 @@ def arg_parser():
                         help='number of version',
                         version='{0}'.format(version))
 
+    parser.add_argument('-ip',
+                               help='ip address',
+                               metavar='<ip address>')
+    parser.add_argument('-dst_ip',
+                               help='destination ip address',
+                               metavar='<ip address>')
+    parser.add_argument('-src_ip',
+                               help='source ip address',
+                               metavar='<ip address>')
+    parser.add_argument('-mac',
+                               help='mac address',
+                               metavar='<mac address>')
+    parser.add_argument('-dst_mac',
+                               help='destination mac address',
+                               metavar='<mac address>')
+    parser.add_argument('-src_mac',
+                               help='source mac address',
+                               metavar='<mac address>')
+    parser.add_argument('-port',
+                               help='port',
+                               metavar='<port>')
+    parser.add_argument('-dst_port',
+                               help='destination port',
+                               metavar='<port>')
+    parser.add_argument('-src_port',
+                               help='source port',
+                               metavar='<port>')
+    parser.add_argument('-type',
+                               help='type of packet: TCP or UDP',
+                               metavar='<type>')
+    parser.add_argument('-s', '--session',
+                        help='split pcap file to tcp and udp session',
+                        default=False,
+                        action='store_true')
+    parser.add_argument('--show',
+                        help='show the output of the parser in console',
+                        default=False,
+                        action='store_true')
+
 
     return parser
 
 
-def pcap_parser(input_file, output_file, filter):
+#def pcap_parser(input_file, output_file, filter):
+def pcap_parser(namespace):
     # Open input file
-    file = open(input_file)
+    #file = open(input_file)
+    file = open(namespace.input_file)
     # Use dpkt parser for read pcap file
     pcap = dpkt.pcap.Reader(file)
 
+    packet = {}
+
+    right_packet = False
 
     number_of_packet = 0
     for ts, buf in pcap:
         try:
+            right_packet = False
             # Parse ethernet level
             eth = dpkt.ethernet.Ethernet(buf)
             ip = eth.data
@@ -87,20 +132,61 @@ def pcap_parser(input_file, output_file, filter):
             # Get data from payload of packet
             data = ip.data.data
 
-            packet = {'index': number_of_packet, 'source': {'src_mac': src_mac, 'src_ip': src_ip, 'src_port': src_port},
-                      'destination': {'dst_mac': dst_mac, 'dst_ip': dst_ip, 'dst_port': dst_port}, 'type': type_packet,
-                      'data': ''}#data}
-            print(packet)
+            # If
+            #test = set(namespace.mac, namespace.port, namespace.ip, namespace.filter, namespace.dst_ip, namespace.src_ip, namespace.dst_port, namespace.src_port, namespace.dst_mac, namespace.src_mac, namespace.type, namespace.filter)
+            #print(test)
+            #if not test:
+            #    print('ololo')
+            if not any((namespace.mac, namespace.port, namespace.ip, namespace.filter, namespace.dst_ip, namespace.src_ip, namespace.dst_port, namespace.src_port, namespace.dst_mac, namespace.src_mac, namespace.type, namespace.filter)):
+                right_packet = True
+                print('no filter')
+            elif namespace.mac and (namespace.mac in(dst_mac, src_mac)):
+                right_packet = True
+            elif namespace.ip and (namespace.ip in (dst_ip, src_ip)):
+                right_packet = True
+            elif namespace.port and (namespace.port in (dst_port, src_port)):
+                right_packet = True
+            elif namespace.src_mac and (namespace.src_mac == src_mac):
+                right_packet = True
+            elif namespace.dst_mac and (namespace.dst_mac == dst_mac):
+                right_packet = True
+            elif namespace.src_ip and (namespace.src_ip == src_ip):
+                right_packet = True
+            elif namespace.dst_ip and (namespace.dst_ip == dst_ip):
+                right_packet = True
+            elif namespace.src_port and (namespace.src_port == src_port):
+                right_packet = True
+            elif namespace.dst_port and (namespace.dst_port == dst_port):
+                right_packet = True
+            elif namespace.type and (namespace.type == type_packet):
+                right_packet = True
+            elif namespace.filter and (namespace.filter in data):
+                right_packet = True
+
+            if right_packet:
+                packet = {'index': number_of_packet,
+                          'source': {'src_mac': src_mac, 'src_ip': src_ip, 'src_port': src_port},
+                          'destination': {'dst_mac': dst_mac, 'dst_ip': dst_ip, 'dst_port': dst_port},
+                          'type': type_packet,
+                          'data': data}
+                number_of_packet = number_of_packet + 1
+
+            if namespace.show:
+                print(packet)
+
+            if namespace.session:
+                pass
             #print(sessions_parser(packet))
 
-            number_of_packet = number_of_packet + 1
+
         except AttributeError:
-            print('Error!')
+            #print('Error!')
             number_of_packet = number_of_packet + 1
             continue
 
 
 def get_mac(raw_mac):
+    # This function for convert mac address to humanreadable
     # raw_mac - .src or .dst methods of Ethernet layer
     mac = ''
     for i in range(6):
@@ -112,11 +198,14 @@ def get_mac(raw_mac):
     return mac[:-1]
 
 
+def filter_function(packet):
+    pass
+
+
 def sessions_parser(packet):
     sessions = {}
     packet_cout = packet['index']
     for i in range(packet_cout):
-        out_str = ''
         network_path = packet['source']['src_ip'] +'.'+packet['source']['src_port']+'-'+packet['destination']['dst_ip']+'.'+packet['destination']['dst_port']
         if (network_path in sessions.keys()) == False:
             sessions[network_path] = []
@@ -137,6 +226,8 @@ if __name__ == "__main__":
     print(namespace)
     if not namespace.input_file:
         print('Select input file!')
+    #elif not namespace.filter == '':
+    #    pass
     else:
-        pcap_parser(namespace.input_file, namespace.output_file, namespace.filter)
- 
+        #pcap_parser(namespace.input_file, namespace.output_file, namespace.filter)
+        pcap_parser(namespace)
