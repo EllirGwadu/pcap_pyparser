@@ -89,8 +89,10 @@ def pcap_parser(namespace):
     pcap = dpkt.pcap.Reader(file)
 
     packet = {}
-
-    right_packet = False
+    packet_count = 0
+    folder = ''
+    number_of_packet = 0
+    sessions_full ={}
 
     number_of_packet = 0
     for ts, buf in pcap:
@@ -175,8 +177,42 @@ def pcap_parser(namespace):
                 print(packet)
 
             if namespace.session:
-                pass
-            #print(sessions_parser(packet))
+                # create sessions on a single packet
+                out_sessions_parser = _sessions_parser(packet)
+                list_files = []
+                if (out_sessions_parser.keys()[0] in sessions_full.keys()) == False:
+                    sessions_full[out_sessions_parser.keys()[0]] = []
+                sessions_full[out_sessions_parser.keys()[0]].append(out_sessions_parser.values()[0][0])
+
+                # bound of iterated packets
+                if packet_count > 10000:
+                    keys_sessions = sessions_full.keys()
+                    for i in range(len(keys_sessions)):
+                        # if session's file doesn't exist - create it
+                        if (keys_sessions[i] in list_files) == None:
+                            fsessions = open(folder + keys_sessions[i], 'w')
+                            sessions_data = sessions_full[keys_sessions[i]]
+                            for j in range(len(sessions_data)):
+                                fsessions.write(sessions_data[j])
+                            fsessions.close()
+                            list_files.append(keys_sessions[i])
+                        # if exist - append
+                        else:
+                            print
+                            'yes'
+                            fsessions = open(folder + keys_sessions[i], 'a')
+                            sessions_data = sessions_full[keys_sessions[i]]
+                            for j in range(len(sessions_data)):
+                                fsessions.write(sessions_data[j])
+                            fsessions.close()
+                    # clear dictionary
+                    sessions_full.clear()
+                    sessions_full = {}
+                    packet_count = 0
+                number_of_packet = number_of_packet + 1
+                packet_count += 1
+
+
 
 
         except AttributeError:
@@ -184,6 +220,26 @@ def pcap_parser(namespace):
             number_of_packet = number_of_packet + 1
             continue
 
+
+    # if not across bound of packets, write sessions
+    keys_sessions = sessions_full.keys()
+    for i in range(len(keys_sessions)):
+        # if session's file doesn't exist - create it
+        if (keys_sessions[i] in list_files) == None:
+            fsessions = open(folder + keys_sessions[i], 'w')
+            sessions_data = sessions_full[keys_sessions[i]]
+            for j in range(len(sessions_data)):
+                fsessions.write(sessions_data[j])
+            fsessions.close()
+            list_files.append(keys_sessions[i])
+        # if exist - append
+        else:
+            fsessions = open(folder + keys_sessions[i], 'a')
+            sessions_data = sessions_full[keys_sessions[i]]
+            for j in range(len(sessions_data)):
+                fsessions.write(sessions_data[j])
+            fsessions.close()
+            # print(sessions_parser(packet))
 
 def get_mac(raw_mac):
     # This function for convert mac address to humanreadable
@@ -196,6 +252,27 @@ def get_mac(raw_mac):
         else:
             mac = mac + tmp[2:] + ":"
     return mac[:-1]
+
+
+def _sessions_parser(packet):
+    sessions = {}
+    packet_cout = packet['index']
+    for i in range(packet_cout):
+        out_str = ''
+        network_path = packet['source']['src_ip'] + '.' + str(packet['source']['src_port']) + '-' + \
+                       packet['destination']['dst_ip'] + '.' + str(packet['destination']['dst_port'])
+        if (network_path in sessions.keys()) == False:
+            sessions[network_path] = []
+            try:
+                data_str = packet['data']
+            except AttributeError:
+                continue
+                # for j in range(0,len(data_str),2):
+                #		out_str = out_str + chr(int(data_str[j:j+2],16))
+            sessions[network_path].append(data_str)
+
+    # print("Extract complite")
+    return sessions
 
 
 def filter_function(packet):
