@@ -178,6 +178,7 @@ def pcap_parser(namespace):
 
             if namespace.session:
                 # create sessions on a single packet
+                print('im here')
                 out_sessions_parser = _sessions_parser(packet)
                 list_files = []
                 if (out_sessions_parser.keys()[0] in sessions_full.keys()) == False:
@@ -212,6 +213,25 @@ def pcap_parser(namespace):
                 number_of_packet = number_of_packet + 1
                 packet_count += 1
 
+                # if not across bound of packets, write sessions
+                keys_sessions = sessions_full.keys()
+                for i in range(len(keys_sessions)):
+                    # if session's file doesn't exist - create it
+                    if (keys_sessions[i] in list_files) == None:
+                        fsessions = open(folder + keys_sessions[i], 'w')
+                        sessions_data = sessions_full[keys_sessions[i]]
+                        for j in range(len(sessions_data)):
+                            fsessions.write(sessions_data[j])
+                        fsessions.close()
+                        list_files.append(keys_sessions[i])
+                    # if exist - append
+                    else:
+                        fsessions = open(folder + keys_sessions[i], 'a')
+                        sessions_data = sessions_full[keys_sessions[i]]
+                        for j in range(len(sessions_data)):
+                            fsessions.write(sessions_data[j])
+                        fsessions.close()
+                    # print(sessions_parser(packet))
 
 
 
@@ -221,25 +241,7 @@ def pcap_parser(namespace):
             continue
 
 
-    # if not across bound of packets, write sessions
-    keys_sessions = sessions_full.keys()
-    for i in range(len(keys_sessions)):
-        # if session's file doesn't exist - create it
-        if (keys_sessions[i] in list_files) == None:
-            fsessions = open(folder + keys_sessions[i], 'w')
-            sessions_data = sessions_full[keys_sessions[i]]
-            for j in range(len(sessions_data)):
-                fsessions.write(sessions_data[j])
-            fsessions.close()
-            list_files.append(keys_sessions[i])
-        # if exist - append
-        else:
-            fsessions = open(folder + keys_sessions[i], 'a')
-            sessions_data = sessions_full[keys_sessions[i]]
-            for j in range(len(sessions_data)):
-                fsessions.write(sessions_data[j])
-            fsessions.close()
-            # print(sessions_parser(packet))
+    
 
 def get_mac(raw_mac):
     # This function for convert mac address to humanreadable
